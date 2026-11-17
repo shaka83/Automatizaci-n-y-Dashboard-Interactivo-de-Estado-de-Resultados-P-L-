@@ -30,7 +30,7 @@ pipeline que usa la interfaz.
 1. Abra **Carga y validación**; el período ya viene en `2026-11`.
 2. Suba `data/pruebas/202611/alfa_202611.csv` en *ERP Alfa*, `beta_202611.csv` en *ERP Beta* y
    `gamma_202611.xlsx` en *ERP Gamma*, y pulse **Validar lote**.
-3. El reporte debe mostrar 5 errores bloqueantes deliberados:
+3. El reporte debe mostrar 5 errores bloqueantes: los 4 casos plantados (1 a 4) y un quinto que es el descuadre en cascada de EMP-08 (explicado debajo de la tabla):
 
 | # | Caso plantado | Regla | Cómo resolverlo |
 |---|---|---|---|

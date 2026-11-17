@@ -97,7 +97,8 @@ def _reporte(res: etl.ResultadoLote) -> None:
             st.write("Sin hallazgos.")
         else:
             st.dataframe(
-                h.style.map(lambda v: COLOR_NIVEL.get(v, ""), subset=["nivel"]),
+                h.style.map(lambda v: COLOR_NIVEL.get(v, ""), subset=["nivel"])
+                .format({"esperado": "{:,.0f}", "observado": "{:,.0f}"}, na_rep="—"),
                 width="stretch", hide_index=True, height=min(60 + 35 * len(h), 480))
 
     with t_cuad:
