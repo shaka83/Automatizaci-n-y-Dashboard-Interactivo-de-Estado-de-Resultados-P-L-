@@ -2,7 +2,8 @@
 
 Genera:
   data/extractos/<erp>/<AAAAMM>.<ext>   histórico limpio 2022-01 .. 2026-10 (58 meses)
-  data/pruebas/<AAAAMM>/...             lote de prueba 2026-11 con errores deliberados
+  data/pruebas/202611/                  lote de prueba 2026-11 con errores deliberados
+  data/pruebas/202611_limpio/           lote 2026-11 sin errores bloqueantes (con pico de EMP-09)
 
 Errores deliberados en el lote de prueba (para demostrar el motor de validación):
   1. BETA: cuenta ERP «600777» sin mapeo                       -> CUENTA_HUERFANA   (ERROR)
@@ -166,32 +167,38 @@ def generar_historico() -> int:
     return total
 
 
-def generar_pruebas() -> Path:
-    """Lote de prueba con errores deliberados (ver encabezado del módulo)."""
+def generar_pruebas(con_errores: bool = True) -> Path:
+    """Lote de prueba para 2026-11.
+
+    con_errores=True  -> lote con errores deliberados (ver encabezado del módulo); carpeta data/pruebas/202611
+    con_errores=False -> lote limpio, sin errores bloqueantes, con el pico de ventas de EMP-09 (alerta);
+                         carpeta data/pruebas/202611_limpio
+    """
     perfiles = parametros(np.random.default_rng(SEMILLA))
     rng = np.random.default_rng(SEMILLA + 2)
     valores = {}
     for codigo, *_ in EMPRESAS:
-        spike = 1.6 if codigo == "EMP-09" else 1.0          # caso 5: pico de ventas
+        spike = 1.6 if codigo == "EMP-09" else 1.0          # pico de ventas (alerta, no bloquea)
         valores[codigo] = valores_mes(PERIODO_PRUEBA, perfiles[codigo], rng, spike=spike)
     por_erp = _filas_por_erp(valores)
-    carpeta = PRUEBAS / f"{PERIODO_PRUEBA:%Y%m}"
+    sufijo = "" if con_errores else "_limpio"
+    carpeta = PRUEBAS / f"{PERIODO_PRUEBA:%Y%m}{sufijo}"
 
-    # 3. Descuadre: total de control de utilidad bruta de EMP-04 incorrecto en ALFA
-    por_erp["ALFA"] = [(e, c, m + 250_000 if (e, c) == ("EMP-04", "CTRL_UB") else m)
-                       for e, c, m in por_erp["ALFA"]]
-    # 4. Signo inconsistente: ingresos financieros de EMP-08 en negativo en GAMMA
-    por_erp["GAMMA"] = [(e, c, -35_000 if (e, c) == ("EMP-08", "8000") else m)
-                        for e, c, m in por_erp["GAMMA"]]
+    extras: dict[str, list[dict] | None] = {"ALFA": None, "BETA": None, "GAMMA": None}
+    if con_errores:
+        # 3. Descuadre: total de control de utilidad bruta de EMP-04 incorrecto en ALFA
+        por_erp["ALFA"] = [(e, c, m + 250_000 if (e, c) == ("EMP-04", "CTRL_UB") else m)
+                           for e, c, m in por_erp["ALFA"]]
+        # 4. Signo inconsistente: ingresos financieros de EMP-08 en negativo en GAMMA
+        por_erp["GAMMA"] = [(e, c, -35_000 if (e, c) == ("EMP-08", "8000") else m)
+                            for e, c, m in por_erp["GAMMA"]]
+        # 1. Cuenta sin mapeo en BETA (fila añadida directamente en el formato del ERP)
+        extras["BETA"] = [{"fecha": PERIODO_PRUEBA.strftime("%Y-%m-01"), "empresa": "EMP-03", "cta": "600777",
+                           "monto_signado": -12_500, "glosa": "Cuenta no homologada"}]
+        # 2. Empresa fuera del catálogo en GAMMA
+        extras["GAMMA"] = [{"Periodo": PERIODO_PRUEBA.strftime("%Y-%m"), "Empresa": "EMP-017",
+                            "Codigo": "VB-01", "Importe": 800_000}]
 
-    # 1. Cuenta sin mapeo en BETA (fila añadida directamente en el formato del ERP)
-    extra_beta = [{"fecha": PERIODO_PRUEBA.strftime("%Y-%m-01"), "empresa": "EMP-03", "cta": "600777",
-                   "monto_signado": -12_500, "glosa": "Cuenta no homologada"}]
-    # 2. Empresa fuera del catálogo en GAMMA
-    extra_gamma = [{"Periodo": PERIODO_PRUEBA.strftime("%Y-%m"), "Empresa": "EMP-017",
-                    "Codigo": "VB-01", "Importe": 800_000}]
-
-    extras = {"ALFA": None, "BETA": extra_beta, "GAMMA": extra_gamma}
     for erp, filas in por_erp.items():
         ruta = _ruta(erp, carpeta / f"{erp.lower()}_{PERIODO_PRUEBA:%Y%m}")
         _escribir(erp, PERIODO_PRUEBA, filas, ruta, extra=extras[erp])
@@ -236,8 +243,10 @@ def main() -> None:
 
     n = generar_historico()
     carpeta = generar_pruebas()
+    carpeta_limpia = generar_pruebas(con_errores=False)
     print(f"Extractos históricos: {n} archivos en {EXTRACTOS}")
-    print(f"Lote de prueba {PERIODO_PRUEBA:%Y-%m}: {carpeta}")
+    print(f"Lote de prueba con errores {PERIODO_PRUEBA:%Y-%m}: {carpeta}")
+    print(f"Lote de prueba limpio {PERIODO_PRUEBA:%Y-%m}: {carpeta_limpia}")
 
     if args.cargar:
         print("Cargando histórico en DuckDB...")

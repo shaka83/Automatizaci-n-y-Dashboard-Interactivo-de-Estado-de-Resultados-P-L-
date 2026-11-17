@@ -43,6 +43,10 @@ pipeline que usa la interfaz.
 Los casos 3 y 4 también provocan un descuadre de utilidad neta en EMP-08: es el efecto esperado, porque el
 total de control del ERP no cambió.
 
+Para **confirmar** una carga en la app, usa el lote limpio `data/pruebas/202611_limpio/` (mismos archivos y
+nombres, sin errores bloqueantes). Trae 4 alertas de anomalía de EMP-09, así que el explorador tiene datos y el
+botón **Confirmar carga en DuckDB** queda habilitado.
+
 El dashboard ya muestra 58 meses tras `python mock_data.py --cargar`. El lote de prueba solo se puede confirmar
 cuando no tiene errores bloqueantes, así que no lo cargue hasta corregir los casos 1 a 4.
 
